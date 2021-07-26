@@ -4,7 +4,7 @@ library(DBI)
 library(RSQLite)
 library(tidyverse)
 library(DT)
-unzip('wildfires.zip')
+
 #fires <- tbl(con, sql("select FIRE_NAME as fire_name, FIRE_YEAR as fire_year, NWCG_GENERAL_CAUSE as cause, CONT_DATE as date, FIRE_SIZE as size, FIRE_SIZE_CLASS as size_class, LATITUDE as latitude, LONGITUDE as longitude, STATE as state 
              #from Fires
                       #limit 500")) %>% collect()
