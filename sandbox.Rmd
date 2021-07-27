@@ -11,38 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## get data
 ```{r connection}
-library(DBI)
-library(RSQLite)
 library(tidyverse)
-con <- dbConnect(SQLite(), unzip('WildFires/wildfires.zip'))
-dbListTables(con)
-dbDisconnect(con)
-
-?dbConnect
-```
-
-```{r causes}
-fires <- tbl(con, sql("select FIRE_NAME as fire_name, FIRE_YEAR as fire_year, NWCG_GENERAL_CAUSE as cause, CONT_DATE as date, FIRE_SIZE as size, FIRE_SIZE_CLASS as size_class, LATITUDE as latitude, LONGITUDE as longitude, STATE as state 
-             from Fires
-             limit 500")) %>% collect()
-unique(fires$size_class)
-letters[1:7]
-LETTERS
-```             
-```{r causes}
-causes <- tbl(con, sql("select NWCG_GENERAL_CAUSE as Cause, count(FIRE_SIZE)/1000 as total_fires, sum(FIRE_SIZE)/1000 as total_area_burned
-             from Fires
-             group by Cause
-             order by 3 desc
-             ")) %>% collect()
-
-ggplot(causes, aes(reorder(Cause, total_area_burned), total_area_burned)) +
-  geom_bar(stat = 'identity', aes(fill = total_fires)) + 
-  labs(x = 'Cause', y = 'Total Area Burned (1,000 acres)', title = 'Fires by Cause') +
-  theme_minimal() + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  coord_flip() +
-  scale_fill_gradient(name = 'Number of Fires (1,000)', low = 'yellow', high = 'red')
-
+combined <- read_csv('combined.csv')[,-1] 
 ```
 
