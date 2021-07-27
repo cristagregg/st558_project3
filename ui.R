@@ -10,6 +10,7 @@
 library(shiny)
 library(shinydashboard)
 library(DT)
+library(plotly)
 
 combined <- read_csv('combined.csv')[,-1] 
 cols <- names(combined)[4:9]
@@ -79,21 +80,21 @@ shinyUI(dashboardPage(
                     fluidPage(
                         
                         # Application title
-                        titlePanel("Old Faithful Geyser Data"),
+                        titlePanel("Historical Wildfire Data"),
                         
                         # Sidebar with a slider input for number of bins 
                         sidebarLayout(
                             sidebarPanel(
-                                sliderInput("bins",
-                                            "Number of bins:",
-                                            min = 1,
-                                            max = 50,
-                                            value = 30)
+                                selectInput("group", "Group by:",
+                                            choices = list('Season', 'Month')),
+                                selectInput('state', 'Filter by State',
+                                            choices = list('No Filter', State = state.abb))
                             ),
                             
                             # Show a plot of the generated distribution
                             mainPanel(
-                                plotOutput("distPlot")
+                                plotlyOutput("boxPlot"),
+                                tableOutput('fireSummary')
                             )
                         )
                     )),

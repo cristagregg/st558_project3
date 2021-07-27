@@ -7,11 +7,48 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(plotly)
 ```
 
 ## get data
 ```{r connection}
 library(tidyverse)
-combined <- read_csv('combined.csv')[,-1] 
+combined <- read_csv('combined.csv')[,-1] %>%
+  mutate(Season = factor(ifelse(Month %in% c(3,4,5), "Spring", ifelse(Month %in% c(6,7,8), 'Summer', ifelse(Month %in% c(9,10,11), 'Fall', 'Winter')))))
+str(combined)
+
+combined$Month <- factor(combined$Month)
+levels(combined$Month) <- month.abb
+
+ggplot(combined, aes(Season, total_acres_burned)) +
+  geom_boxplot()
+
+
+ggplot(combined, aes(total_fires)) +
+  geom_histogram(aes(fill = Season)) 
+
+ggplot(combined, aes(Season, total_fires)) +
+  geom_boxplot() +
+  theme_minimal()
+
+plot_ly(combined, color = ~Season, y = ~total_fires, alpha = 0.3, type = 'box')
+?plot_ly
+combined %>% 
+  group_by(Season) %>%
+  summarise(mean_number_fires = mean(total_fires), median_number_fires = median(total_fires), mean_fire_size = mean(total_acres_burned)/mean(total_fires), median_fire_size = median(total_acres_burned)/median(total_fires))
+```
+#create plots
+```{r}
+#summarize across summer monthhs
+combined %>%
+  filter(Month %in% c(6,7,8)) %>%
+  group_by(Year) %>%
+  summarise(yrly_avg_temp = mean(avg_temp), yrly_drought = mean(drought_severity), avg_acres_burned = mean(total_acres_burned))
+
+combined %>%
+  group_by(Year) %>%
+  summarise(yrly_avg_temp = mean(avg_temp), avg_acres_burned = mean(total_acres_burned)) %>%
+  ggplot(aes(Year)) +
+    geom_line(aes(y=avg_acres_burned))
 ```
 
