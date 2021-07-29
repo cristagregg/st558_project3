@@ -68,6 +68,73 @@ summary(avg_yearly_change, )
     theme_minimal() +
     labs(title = 'Scaled Wildfires and Climate Data by Year', y = 'Scaled Metric') +
     scale_color_discrete(name = 'Metric')
-?pivot_wider
+
 ```
+
+#model fitting
+```{r}
+library(caret)
+library(gbm)
+state <- 'CA'
+modeling <- filter(combined, State == state)
+modeling
+
+train_split <- 0.8
+train_rows <- sample(nrow(modeling), train_split*nrow(modeling))
+train <- modeling[train_rows,]
+test <- modeling[-train_rows,]
+
+
+lm.fit <- train(total_fires ~ avg_temp + drought_severity + avg_precip + Month + avg_precip:Month + drought_severity:Month + avg_temp:Month, data = train,
+                method = 'lm',
+                preProcess = c('center', 'scale'),
+                trControl = trainControl('cv', number = 10))
+  
+lm.fit$results[2:4]
+
+lm.pred <- predict(lm.fit, modeling[-train_rows,])
+typeof(lm.pred)
+typeof(modeling[-train_rows, 'total_fires'])
+postResample(lm.pred, modeling$total_fires[-train_rows])
+
+```
+```{r}
+knn.fit <- train(total_fires ~ avg_temp, data = train,
+                 method = 'knn',
+                 preProcess = c('center', 'scale'),
+                 trControl = trainControl('cv', number = 10),
+                 tuneGrid = data.frame(k = 1:30))
+
+best <- which.min(knn.fit$results[,2])
+knn.fit$results[best, 1:4]   
+plot(knn.fit)
+
+```
+```{r}
+boost_grid <- expand.grid(n.trees = c(20, 100, 500),
+                          interaction.depth = c(1, 3, 5),
+                          shrinkage = c(0.2, 0.1, 0.01, 0.001),
+                          n.minobsinnode = 10)
+
+boost.fit <- train(total_fires ~ avg_temp , data = train,
+                 method = 'gbm',
+                 verbose = F, #suppresses excessive printing while model is training
+                 preProcess = c('center', 'scale'),
+                 trControl = trainControl('cv', number = 5),
+                 tuneGrid = boost_grid)
+library(randomForest)
+
+
+topFive <- summary(boost.fit, plotit = F)
+ggplot(head(topFive), aes(reorder(var, rel.inf), rel.inf)) +
+         geom_bar(stat = 'identity', fill = 'darkblue')  +
+         coord_flip() +
+  labs(x = 'Variable', y = 'Relative Importance')
+
+boost.fit$bestTune$n.trees
+best <- which.min(boost.fit$results$RMSE)
+boost.fit$results[best,1:7]
+?relative.influence[,1:7]
+```
+
 

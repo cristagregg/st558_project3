@@ -4,6 +4,8 @@ library(tidyverse)
 library(DT)
 library(plotly)
 library(htmlwidgets)
+library(caret)
+library(gbm)
 
 #data
 combined <- read_csv('combined.csv')[,-1] %>%
@@ -139,6 +141,127 @@ shinyServer(function(input, output, session) {
         pivot_wider(values_from = value)
       paste('There were', data[nrow(data),input$fireMetric], tolower(input$fireMetric), ifelse(input$state != 'No Filter', paste('in the state of', input$state), paste('in the US')), 'in the', ifelse(input$season != 'No Filter', paste(input$season, 'of'), 'year of'), '2018. The', tolower(input$climateMetric), 'was', round(data[nrow(data),input$climateMetric]), 'degrees. The chart above tracks your selected metrics by year from 1992 to 2018. The curve overlayed on top of the points is fitted using the LOESS method.')
     })
+    
+      #model fitting
+        #split data and filter
+    modeling <- eventReactive(input$run,
+        {modeling <- combined %>%
+          filter(State == input$state2) %>%
+          select(total_fires, input$predictors)}
+      )
+    
+    train_rows <- eventReactive(input$run,
+        {train_rows <- sample(nrow(modeling()), input$trainProp*nrow(modeling()))
+      })
+    
+    lm.fit <- reactive({
+        lm.fit <- train(if (input$interactions == 'Yes') {
+          total_fires ~ .*.
+        } else {
+          total_fires ~ .
+        },
+        data = modeling(), subset = train_rows(),
+        method = 'lm',
+        preProcess = c('center', 'scale'),
+        trControl = trainControl('cv', number = 5))
+    })
+    
+      #display lm results when button pressed
+      observeEvent(input$run,
+        output$lm <- renderTable({
+          print(lm.fit()$results[2:4])
+      })
+      )
+      
+      #create anova table when button pressed
+      observeEvent(input$run,
+        output$lmAnova <- renderTable(
+          data.frame(
+            anova(lm(if (input$interactions == 'Yes') {
+              total_fires ~ .*.
+            } else {
+              total_fires ~ .
+            },
+            data = modeling(), subset = train_rows()))
+          ),
+          rownames = T
+        )
+      )
+      
+      knn.fit <- reactive({
+        knn.fit <- train(total_fires ~ ., data = modeling(), 
+                         subset = train_rows(),
+                         method = 'knn',
+                         preProcess = c('center', 'scale'),
+                         trControl = trainControl('cv', number = 5),
+                         tuneGrid = data.frame(k = 1:30))
+      })
+      #display knn results when button pressed
+      observeEvent(input$run,
+                   output$knn <- renderTable({
+                     best <- which.min(knn.fit()$results[,2])
+                     print(knn.fit()$results[best, 1:4])
+                   })
+      )
+      
+      #plot MSE by k
+      observeEvent(input$run,
+                   output$knnPlot <- renderPlot(
+                     plot(knn.fit()),
+                     height = 240
+                   )
+      )
+      
+      #get boosting model
+      boost.fit <- reactive({
+        boost.fit <- train(total_fires ~ ., data = modeling(), 
+                           subset = train_rows(),
+                           method = 'gbm',
+                           verbose = F, #suppresses excessive printing while model is training
+                           preProcess = c('center', 'scale'),
+                           trControl = trainControl('cv', number = 5),
+                           tuneGrid = expand.grid(n.trees = c(20, 100, 500),
+                                                  interaction.depth = c(1, 3, 5),
+                                                  shrinkage = c(0.2, 0.1, 0.01, 0.001),
+                                                  n.minobsinnode = 10))
+      })
+      
+      #display boosting results when button pressed
+      observeEvent(input$run,
+                   output$boost <- renderTable({
+                     best <- which.min(boost.fit()$results$RMSE)
+                     print(boost.fit()$results[best,1:4])
+                   })
+      )
+      observeEvent(input$run,
+                   output$boost2 <- renderTable({
+                     best <- which.min(boost.fit()$results$RMSE)
+                     print(boost.fit()$results[best,5:7])
+                   })
+      )
+      
+      #disply variable importance plot
+      observeEvent(input$run,
+                   output$impPlot <- renderPlot(
+                     ggplot(head(summary(boost.fit(), plotit = F)), aes(reorder(var, rel.inf), rel.inf)) +
+                       geom_bar(stat = 'identity', fill = 'darkblue')  +
+                       coord_flip() +
+                       labs(x = 'Variable', y = 'Relative Importance'),
+                     height = 240
+                     )
+      )
+      
+      #display test results
+      observeEvent(input$compare,
+                   output$testResults <- renderTable(
+                    print(
+                      cbind('Linear' = postResample(predict(lm.fit(), modeling()[-train_rows(),]), modeling()$total_fires[-train_rows()]),
+                            'kNN' = postResample(predict(knn.fit(), modeling()[-train_rows(),]), modeling()$total_fires[-train_rows()]),
+                            'Boosted' = postResample(predict(boost.fit(), modeling()[-train_rows(),]), modeling()$total_fires[-train_rows()]))
+                    ),
+                    rownames = T
+                   )
+      )
   })
 
     
