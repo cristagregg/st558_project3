@@ -39,16 +39,35 @@ combined %>%
 ```
 #create plots
 ```{r}
-#summarize across summer monthhs
-combined %>%
-  filter(Month %in% c(6,7,8)) %>%
+#summarize across summer months
+combined2 <- combined %>% filter(State == 'CA') %>%
   group_by(Year) %>%
-  summarise(yrly_avg_temp = mean(avg_temp), yrly_drought = mean(drought_severity), avg_acres_burned = mean(total_acres_burned))
+  summarise(`Yearly Average Temperature` = mean(avg_temp), 
+            `Yearly Average High Temperature` = mean(max_temp),
+            `Yearly Average Drought Severity` = mean(drought_severity),
+            `Total Acres Burned` = sum(total_acres_burned),
+            `Total Fires` = sum(total_fires)) %>%
+  pivot_longer(cols = `Yearly Average Temperature`:`Total Fires`) %>%
+  #group_by(name) %>%
+  #mutate(scaled = scale(value)) %>%
+  filter(name == 'Yearly Average Temperature' | name == 'Total Fires') %>%
+  pivot_wider(values_from = value) 
+combined2; avg_yearly_change
+avg_yearly_change <- (combined2[,2]-lag(combined2[,2]))/(lag(combined2[,2]))[[1]]
+mean(avg_yearly_change[[1]], na.rm = T)
+str(avg_yearly_change)
+summary(avg_yearly_change, )
+  mutate(`Yearly Change` = (`Total Fires` - lag(`Total Fires`))/lag(`Total Fires`), Corr = cor(`Yearly Average Temperature`, `Total Fires`)) %>%
+  ungroup() %>%
+  summarise(`Mean Yearly Change` = mean(`Yearly Change`, na.rm = T), mean(Corr))
 
-combined %>%
-  group_by(Year) %>%
-  summarise(yrly_avg_temp = mean(avg_temp), avg_acres_burned = mean(total_acres_burned)) %>%
-  ggplot(aes(Year)) +
-    geom_line(aes(y=avg_acres_burned))
+  ggplot(aes(Year, scaled)) +
+    geom_point(aes(col = name), size = 1.5) +
+    geom_line(aes(col = name)) +
+    geom_smooth(aes(col = name), size = 1.5) +
+    theme_minimal() +
+    labs(title = 'Scaled Wildfires and Climate Data by Year', y = 'Scaled Metric') +
+    scale_color_discrete(name = 'Metric')
+?pivot_wider
 ```
 

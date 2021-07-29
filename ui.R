@@ -9,8 +9,10 @@
 
 library(shiny)
 library(shinydashboard)
+library(tidyverse)
 library(DT)
 library(plotly)
+library(htmlwidgets)
 
 combined <- read_csv('combined.csv')[,-1] 
 cols <- names(combined)[4:9]
@@ -23,7 +25,7 @@ shinyUI(dashboardPage(
             menuItem("About", tabName = "About", icon = icon("About")),
             menuItem("Data", tabName = "Data", icon = icon("Data")),
             menuItem("Exploration", tabName = "Exploration", icon = icon("Exploration")),
-            menuItem("Modelling", tabName = "Modelling", icon = icon("Modelling"))
+            menuItem("Modeling", tabName = "Modeling", icon = icon("Modeling"))
         )
     ),
     dashboardBody(
@@ -85,20 +87,56 @@ shinyUI(dashboardPage(
                         # Sidebar with a slider input for number of bins 
                         sidebarLayout(
                             sidebarPanel(
-                                selectInput("group", "Group by:",
-                                            choices = list('Season', 'Month')),
+                                selectInput('mainGraphChoice', h3('Select the type of graph you wish to view'), 
+                                            choices = list('Wildfires by Season', 'Wildfire and Climate data')),
                                 selectInput('state', 'Filter by State',
-                                            choices = list('No Filter', State = state.abb))
+                                            choices = list('No Filter', 
+                                                           State = state.abb)),
+                                
+                                #dynamic UI 1
+                                conditionalPanel(condition = "input.mainGraphChoice == 'Wildfires by Season'",
+                                    selectInput("group", "Group by:",
+                                            choices = list('Season', 
+                                                           'Month')),
+                                    downloadButton('download_plotly_widget', "Download data")
+                            ),
+                            conditionalPanel(condition = "input.mainGraphChoice == 'Wildfire and Climate data'",
+                                    selectInput('season', 'Filter by Season',
+                                            choices = list('No Filter',
+                                                           'Spring',
+                                                           'Summer',
+                                                           'Fall',
+                                                           'Winter')),
+                                    selectInput('climateMetric', 'Select the Climate Metric',
+                                            choices = list('Average Temperature',
+                                                           'Average High Temperature', 
+                                                           'Average Drought Severity',
+                                                           'Average Precipitation')),
+                                    selectInput('fireMetric', 'Select the Wildfire Metric',
+                                                choices = list('Total Fires', 
+                                                               'Total Acres Burned')),
+                                    
+                                    downloadButton('downloadPlotTwo', "Download data")
+                                    )
                             ),
                             
                             # Show a plot of the generated distribution
                             mainPanel(
-                                plotlyOutput("boxPlot"),
-                                tableOutput('fireSummary')
+                                conditionalPanel(condition = "input.mainGraphChoice == 'Wildfires by Season'",
+                                            uiOutput('info'), #dynamic UI 2    
+                                            plotlyOutput("boxPlot"),
+                                            tableOutput('fireSummary')
+                            ),
+                                conditionalPanel(condition = "input.mainGraphChoice == 'Wildfire and Climate data'",
+                                             plotOutput("climateChart"),
+                                             br(),
+                                             textOutput('climateSummary')
+                            )
+                            
                             )
                         )
                     )),
-            tabItem(tabName = 'Modelling')
+            tabItem(tabName = 'Modeling')
                     
                     
                     
