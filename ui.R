@@ -202,7 +202,6 @@ shinyUI(dashboardPage(
                                                      fluidPage(h3('Random Forests'),
                                                                h4('Cross Validation Results'),
                                                                tableOutput('rf'),
-                                                               tableOutput('rf2'),
                                                                h4('Variable Importance Plot'),
                                                                plotOutput('impPlot'))
                                                 )

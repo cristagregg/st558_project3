@@ -212,7 +212,7 @@ shinyServer(function(input, output, session) {
       observeEvent(input$run,
                    output$treePlot <- renderPlot(
                      rpart.plot(tree.fit()$finalModel),
-                     height = 300
+                     height = 250
                    )
       )
       
@@ -234,12 +234,6 @@ shinyServer(function(input, output, session) {
                      })
                    })
       )
-      observeEvent(input$run,
-                   output$rf2 <- renderTable({
-                     best <- which.min(rf.fit()$results$RMSE)
-                     print(rf.fit()$results[best,5:7])
-                   })
-      )
       
       #disply variable importance plot
       observeEvent(input$run,
@@ -248,7 +242,7 @@ shinyServer(function(input, output, session) {
                        geom_bar(stat = 'identity', fill = 'darkblue')  +
                        coord_flip() +
                        labs(x = 'Variable', y = 'Variable Importance'),
-                     height = 240
+                     height = 250
                      )
       )
       
