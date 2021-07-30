@@ -1,5 +1,5 @@
 # st558_project3
-This project will create a Shiny app to analyze wildfire and climate data. You will be able to view and download raw data, view plots, and fit predictive models.
+This project creates a Shiny app to analyze wildfire and climate data. You will be able to view and download raw data, view plots, and fit predictive models.
 
 To run this dashboard from your computer, enter the following code into your R Studio:
 
