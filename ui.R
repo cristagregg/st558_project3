@@ -15,6 +15,7 @@ library(plotly)
 library(htmlwidgets)
 library(caret)
 library(gbm)
+library(rpart.plot)
 
 combined <- read_csv('combined.csv')[,-1] 
 cols <- names(combined)[4:9]
@@ -39,22 +40,21 @@ shinyUI(dashboardPage(
                         titlePanel("Wildfire Data"),
                         sidebarLayout(
                             sidebarPanel(
-                                img(src='wildfire.png', height = 350, width = 240)
+                                img(src='wildfire.png', height = 350, width = 270)
                             ),
                             
                             mainPanel(
                                 h3('Understanding the Prevalence and Causes of Wildfires'),
                                 h4('Background'),
-                                p('Wildfires have become an extremely common and concerning problem across the United States, particularly across the Western states. Increasing drought and record heatwaves have triggered more and more fires that quickly become out of control. These fires have enormous impacts on human life, causing people to lose their homes and entires towns being destroyed.'),
-                                br(),
+                                p('Wildfires have become an extremely common and concerning problem across the United States, particularly across the Western states. Increasing drought and record heatwaves have triggered more and more fires that quickly become out of control. These fires have enormous impacts on human life, causing people to lose their homes and entire towns being destroyed.'),
                                 h4('Purpose'),
-                                p('The purpose of this project is to raise awareness on the impact of wildfires and understand their causes. We will also investigate how weather patterns affect the number and severity of wildfires, and create a model to predict wildfires. We will use data provided by the US Department of Agriculture which provides information on wildfires from 1992 to 2018. This data will be summarized by state, year, and month, prior to using due to the size of the file. We will also use a climate dataset provided by the National Centers for Environmental Information. These data will be combined for this project. You can find more information about these original datasets via these links:'),
+                                p('The purpose of this project is to raise awareness on the impact and trends of wildfires and investigate how weather patterns affect the number and severity of wildfires. We will create a model to predict wildfires by climate data. We will use data provided by the US Department of Agriculture which provides information on wildfires from 1992 to 2018. This data will be summarized by state, year, and month, prior to using in this app due to the size of the original file. We will also use a climate dataset provided by the National Centers for Environmental Information. These data will be combined for this project. You can find more information about these original datasets via these links:'),
                                 a(href='https://www.fs.usda.gov/rds/archive/Catalog/RDS-2013-0009.5', 'Wildfire data'),
                                 br(),
                                 a(href='https://www.ncdc.noaa.gov/cag/divisional/mapping/110/pcp/202106/1/value', 'Climate data'),
-                                br(), br(),
+                                br(), 
                                 h4('About the App'),
-                                p('In the Data tab, you will be able to investigate the combined dataset. The Data Exploration tab will allow you to make some charts and summaries. Finally, the modelling page will allow you to investigate different models used for prediction.')
+                                p('In the Data tab, you will be able to investigate and download the combined dataset. The Data Exploration tab will allow you to make some charts and summaries on historical data. Finally, the modelling page will allow you to investigate different predictive models and predict the number of fires for a chosen month.')
                             )
                         )
                     
@@ -64,7 +64,7 @@ shinyUI(dashboardPage(
             tabItem(tabName = 'Data',
                     fluidPage(
                         titlePanel("Data"),
-                        
+                        h4('This tab contains the combined wildfire and climate dataset.'),
                         sidebarLayout(
                             sidebarPanel(
                               
@@ -98,7 +98,7 @@ shinyUI(dashboardPage(
                                     selectInput("group", "Group by:",
                                             choices = list('Season', 
                                                            'Month')),
-                                    downloadButton('download_plotly_widget', "Download data")
+                                    downloadButton('download_plotly_widget', "Download Plot")
                             ),
                             conditionalPanel(condition = "input.mainGraphChoice == 'Wildfire and Climate data'",
                                     selectInput('season', 'Filter by Season',
@@ -116,7 +116,7 @@ shinyUI(dashboardPage(
                                                 choices = list('Total Fires', 
                                                                'Total Acres Burned')),
                                     
-                                    downloadButton('downloadPlotTwo', "Download data")
+                                    downloadButton('downloadPlotTwo', "Download Plot")
                                     )
                             ),
                             
@@ -141,16 +141,16 @@ shinyUI(dashboardPage(
                             tabsetPanel(
                                 tabPanel('Modeling Info',
                                          h2('Information on Model Types'),
-                                         p('In the next tab we will compare the fit of three different types of models. We are attempting to predict either the total number of fires or the total acres burned for each month over the timeframe we have data for.'),
+                                         p('In the next tab we will compare the fit of three different types of models. We are attempting to predict either the total number of fires for each month over the timeframe we have data for.'),
                                          h3('Linear Regression'),
                                          p('Linear regression is one of the most common methods for modeling. It looks at a set of predictors and estimates what will happen to the response if one of the predictors or a combination of predictors change. The model is chosen by minimizing the squares of the distances between the estimated value and the actual value in the testing set. The basic Simple Linear Regression Model is shown below:'),
                                          withMathJax(),
                                          '$$Y_i = \\beta_0 + \\beta_1x_i + E_i$$',
-                                         p('This model is beneficial because it is highly interpretable, as it shows us the effect of each individual predictor as well as interactions. We can see if the change in the response goes up or down and in what quantity. However, this model has limited flexibility, and it relies on several statistical assumptions that could be violated.'),
-                                         h3('k-Nearest Neighbors'),
-                                         p('k-Nearest Neighbors is a much more flexible modeling method than linear regression, as it can take any shape it needs to for prediction. This method looks at the k number (chosen by cross-validation) of neighbors to an observation we wish to classify and predicts the observation based on the majority vote (for classification) or average of the responses (for regression). This model is beneficial because it can fit very flexible models. However, we lose interpretability of the model, and we also must be careful, as the KNN method is very susceptible to the ', a(href = 'https://builtin.com/data-science/curse-dimensionality', 'Curse of Dimensionality.')),
-                                         h3('Boosting'),
-                                         p('Boosting is another method that is very flexible. It is a variation on a tree-based method where the final model is developed through an iterative combination of weaker models where each iteration builds upon the last. This model learns slowly, and predictions are updated as the trees are grown. This both method tends to process good results, but the model itself is not as interpretable as linear regression. This can be offset somewhat by investigating the variable importance.')
+                                         p('This model can be extended to include multiple predictors, interactions, and polynomials. This is known as Multiple Linear Regression. This model is beneficial because it is highly interpretable; it shows us the effect of each individual predictor as well as interactions. We can see if the change in the response goes up or down and in what quantity. However, this model has limited flexibility, and it relies on several statistical assumptions that could be violated.'),
+                                         h3('Regression Tree'),
+                                         p('Regression Trees are an intuitive method for fitting predictive models. They minimize the Residual Sum of Squares by creating splits in the predictor space, and then using the mean of the observations as the prediction. Using trees allow you to visualize the model in a way that it easy to understand. However, their usefulness is limited because it takes a "greedy" approach, selecting the most important variable first, which increases the variance of the model. This can be managed somewhat by pruning the tree back after fitting, using cross-validation.'),
+                                         h3('Random Forests'),
+                                         p('Random Forests is a tree based method which optimizes the development process. It is a variation on Baggin, which creates many bootstrapped trees and averages across the fitted trees. The random forest method uses a different subset of predictors for each tree. By reducing the number of predictors considered in each tree, we are able to reduce the correlation between trees to improve our results. The number of predictors used is chosen by cross-validation. The benefits of using this method are that it decreases the variance of our tree fit, giving better predictions. However, we lose interpretability, and are only able to look at variable importance measures.')
                                          ),
                                 tabPanel('Model Fitting',
                                          fluidPage(
@@ -194,22 +194,48 @@ shinyUI(dashboardPage(
                                                                tableOutput('lm'),
                                                                h4('ANOVA output for selected model'),
                                                                tableOutput('lmAnova')),
-                                                     fluidPage(h3('k-Nearest Neighbors'),
+                                                     fluidPage(h3('Regression Tree'),
                                                                h4('Cross Validation Results'),
-                                                               tableOutput('knn'),
-                                                               h4('RMSE by Number of Neighbors'),
-                                                               plotOutput('knnPlot')),
-                                                     fluidPage(h3('Boosting'),
+                                                               tableOutput('tree'),
+                                                               h4('Regression Tree Plot'),
+                                                               plotOutput('treePlot')),
+                                                     fluidPage(h3('Random Forests'),
                                                                h4('Cross Validation Results'),
-                                                               tableOutput('boost'),
-                                                               tableOutput('boost2'),
+                                                               tableOutput('rf'),
+                                                               tableOutput('rf2'),
                                                                h4('Variable Importance Plot'),
                                                                plotOutput('impPlot'))
                                                 )
                                              )
                                              
                                          )),
-                                tabPanel('Predictions')
+                                tabPanel('Predictions',
+                                         fluidPage(
+                                             sidebarLayout(
+                                                 sidebarPanel(
+                                                     h4('Select your inputs'),
+                                                     selectInput('month', 'Month', 
+                                                                 choices = month.abb),
+                                                     sliderInput('avgTemp', 'Average Temperature', value = 75,
+                                                                 min = 0, max = 130),
+                                                     sliderInput('drought', 'Drought Severity', value = 0,
+                                                                 min = -10, max = 10, step = 0.5),
+                                                     sliderInput('precip', 'Average Precipitation', value = 5,
+                                                                 min = 0, max = 18, step = 0.5),
+                                                     sliderInput('year', 'Year', value = 2010,
+                                                                 min = 1992, max = 2018, sep = ''),
+                                                     actionButton('predict', h4(strong('Predict')))
+                                                 ),
+                                                 mainPanel(
+                                                     h3('Make a prediction using the', strong('Random Forest'), 'model with all 5 predictors.'),
+                                                     h4(textOutput('statePred')),
+                                                     br(),
+                                                     h3(textOutput('getrfPred'))
+                                                 )
+                                             )
+                                         )
+                                         
+                                        )
                             )
                         )
                     )

@@ -15,6 +15,7 @@ library(plotly)
 library(tidyverse)
 combined <- read_csv('combined.csv')[,-1] %>%
   mutate(Season = factor(ifelse(Month %in% c(3,4,5), "Spring", ifelse(Month %in% c(6,7,8), 'Summer', ifelse(Month %in% c(9,10,11), 'Fall', 'Winter')))))
+
 str(combined)
 
 combined$Month <- factor(combined$Month)
@@ -52,22 +53,8 @@ combined2 <- combined %>% filter(State == 'CA') %>%
   #mutate(scaled = scale(value)) %>%
   filter(name == 'Yearly Average Temperature' | name == 'Total Fires') %>%
   pivot_wider(values_from = value) 
-combined2; avg_yearly_change
-avg_yearly_change <- (combined2[,2]-lag(combined2[,2]))/(lag(combined2[,2]))[[1]]
-mean(avg_yearly_change[[1]], na.rm = T)
-str(avg_yearly_change)
-summary(avg_yearly_change, )
-  mutate(`Yearly Change` = (`Total Fires` - lag(`Total Fires`))/lag(`Total Fires`), Corr = cor(`Yearly Average Temperature`, `Total Fires`)) %>%
-  ungroup() %>%
-  summarise(`Mean Yearly Change` = mean(`Yearly Change`, na.rm = T), mean(Corr))
 
-  ggplot(aes(Year, scaled)) +
-    geom_point(aes(col = name), size = 1.5) +
-    geom_line(aes(col = name)) +
-    geom_smooth(aes(col = name), size = 1.5) +
-    theme_minimal() +
-    labs(title = 'Scaled Wildfires and Climate Data by Year', y = 'Scaled Metric') +
-    scale_color_discrete(name = 'Metric')
+
 
 ```
 
@@ -93,48 +80,69 @@ lm.fit <- train(total_fires ~ avg_temp + drought_severity + avg_precip + Month +
 lm.fit$results[2:4]
 
 lm.pred <- predict(lm.fit, modeling[-train_rows,])
-typeof(lm.pred)
-typeof(modeling[-train_rows, 'total_fires'])
+
 postResample(lm.pred, modeling$total_fires[-train_rows])
 
 ```
 ```{r}
-knn.fit <- train(total_fires ~ avg_temp, data = train,
-                 method = 'knn',
-                 preProcess = c('center', 'scale'),
-                 trControl = trainControl('cv', number = 10),
-                 tuneGrid = data.frame(k = 1:30))
+tree.fit <- train(total_fires ~ avg_temp + drought_severity + avg_precip + Month, data = train,
+                 method = 'rpart',
+                 trControl = trainControl('cv', number = 10))
 
-best <- which.min(knn.fit$results[,2])
+tree.fit
 knn.fit$results[best, 1:4]   
-plot(knn.fit)
-
+library(rpart.plot)
+rpart.plot(tree.fit$finalModel)#;text(tree.fit$finalModel, pretty = T)
 ```
 ```{r}
-boost_grid <- expand.grid(n.trees = c(20, 100, 500),
-                          interaction.depth = c(1, 3, 5),
-                          shrinkage = c(0.2, 0.1, 0.01, 0.001),
-                          n.minobsinnode = 10)
+data <- modeling[train_rows,] %>%
+  filter(State == state) %>%
+  select(total_fires, avg_temp, drought_severity, avg_precip, Month, Year)
 
-boost.fit <- train(total_fires ~ avg_temp , data = train,
-                 method = 'gbm',
-                 verbose = F, #suppresses excessive printing while model is training
+rf.fit <- train(total_fires ~ .,
+                data = data,
+                 method = 'rf',
                  preProcess = c('center', 'scale'),
                  trControl = trainControl('cv', number = 5),
-                 tuneGrid = boost_grid)
+                tuneGrid = data.frame(mtry = seq(10, 20, by = 2))
+                )
+rf.fit
+seq(10,20, by =2)
+varImp(rf.fit)
+plot.temp<-3
+
+plot.year<-plot(boost.fit$finalModel,i="Year",main='Increasing Year')
+plot.precip<-plot(boost.fit$finalModel,i="avg_precip", main='Increasing Avg Precip')
+plot.drought<-plot(boost.fit$finalModel,i="drought_severity",main='Increasing Drought Severity', lwd = 2)
+gridExtra::grid.arrange(plot.temp, plot.year, plot.precip, plot.drought, ncol = 2)
+?plot.gbm
+getModelInfo('rf')
+```
+```{r}
+preProcess
+
 library(randomForest)
+importance(rf.fit$finalModel)
+varImpPlot(rf.fit$finalModel, n.var = 5, main = 'Variable Importance')
 
-
-topFive <- summary(boost.fit, plotit = F)
-ggplot(head(topFive), aes(reorder(var, rel.inf), rel.inf)) +
+important <- data.frame(variable = rownames(rf.fit$finalModel$importance), importance = rf.fit$finalModel$importance)
+ggplot(head(important), aes(reorder(variable, IncNodePurity), IncNodePurity)) +
          geom_bar(stat = 'identity', fill = 'darkblue')  +
          coord_flip() +
-  labs(x = 'Variable', y = 'Relative Importance')
+  labs(x = 'Variable', y = 'Variable Importance')
 
 boost.fit$bestTune$n.trees
 best <- which.min(boost.fit$results$RMSE)
 boost.fit$results[best,1:7]
-?relative.influence[,1:7]
+```
+```{r get prediction}
+avg_temp <- 75
+drought_severity <- 0
+avg_precip <- 4
+Year <- 2000
+Month <- 'Jul'
+
+predict(rf.fit, data.frame(avg_temp = avg_temp, drought_severity = drought_severity, avg_precip = avg_precip, Year = Year, Month = Month))
 ```
 
 
