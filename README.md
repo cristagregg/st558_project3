@@ -4,7 +4,7 @@ This project creates a Shiny app to analyze wildfire and climate data. You will 
 To run this dashboard from your computer, enter the following code into your R Studio:
 
 #install and load required packages  
-install.packages(c('shiny', 'shinydashboard', 'tidyverse', 'DT', 'plotly', 'plotly', 'htmlwidgets', 'caret', 'gbm', 'rpart.plot'))  
+install.packages(c('shiny', 'shinydashboard', 'tidyverse', 'DT', 'plotly', 'htmlwidgets', 'caret', 'gbm', 'rpart.plot'))  
 library(shiny)  
 library(shinydashboard)  
 library(tidyverse)  
